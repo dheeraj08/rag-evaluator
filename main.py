@@ -27,7 +27,7 @@ def run_evaluation(request: EvalRequest):
 def get_scores():
     return load_scores()
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
 
@@ -117,21 +117,21 @@ def dashboard():
     <div class="live-dot"><span class="dot"></span>Live</div>
   </div>
 
-  <div class="metrics" id="metricsGrid">
+  <div class="metrics">
     <div class="metric-card">
       <div class="label">Avg faithfulness</div>
       <div class="value" id="mFaith" style="color:""" + ("#1D9E75" if avg_faithfulness >= 0.7 else "#EF9F27" if avg_faithfulness >= 0.5 else "#E24B4A") + """">""" + str(avg_faithfulness) + """</div>
-      <div class="sub">across """ + str(total) + """ queries</div>
+      <div class="sub" id="mFaithSub">across """ + str(total) + """ queries</div>
     </div>
     <div class="metric-card">
       <div class="label">Avg relevance</div>
       <div class="value" id="mRelev" style="color:""" + ("#1D9E75" if avg_relevance >= 0.7 else "#EF9F27" if avg_relevance >= 0.5 else "#E24B4A") + """">""" + str(avg_relevance) + """</div>
-      <div class="sub">across """ + str(total) + """ queries</div>
+      <div class="sub" id="mRelevSub">across """ + str(total) + """ queries</div>
     </div>
     <div class="metric-card">
       <div class="label">Context precision</div>
       <div class="value" id="mPrec" style="color:""" + ("#1D9E75" if avg_precision >= 0.7 else "#EF9F27" if avg_precision >= 0.5 else "#E24B4A") + """">""" + str(avg_precision) + """</div>
-      <div class="sub">across """ + str(total) + """ queries</div>
+      <div class="sub" id="mPrecSub">across """ + str(total) + """ queries</div>
     </div>
     <div class="metric-card">
       <div class="label">Pass rate</div>
@@ -174,6 +174,10 @@ def dashboard():
 <script>
 const initialScores = """ + scores_json + """;
 
+function getColor(val) {
+  return val >= 0.7 ? '#1D9E75' : val >= 0.5 ? '#EF9F27' : '#E24B4A';
+}
+
 function renderCards(scores) {
   const list = document.getElementById('queriesList');
   list.innerHTML = '';
@@ -186,18 +190,15 @@ function renderCards(scores) {
     const card = document.createElement('div');
     card.className = 'query-card';
     card.onclick = () => card.classList.toggle('open');
-    const fColor = s.scores.faithfulness >= 0.7 ? '#1D9E75' : s.scores.faithfulness >= 0.5 ? '#EF9F27' : '#E24B4A';
-    const rColor = s.scores.relevance >= 0.7 ? '#1D9E75' : s.scores.relevance >= 0.5 ? '#EF9F27' : '#E24B4A';
-    const pColor = s.scores.context_precision >= 0.7 ? '#1D9E75' : s.scores.context_precision >= 0.5 ? '#EF9F27' : '#E24B4A';
     card.innerHTML = `
       <div class="query-header">
         <div class="query-question">${s.question}</div>
         <span class="badge badge-${s.verdict.toLowerCase()}">${s.verdict}</span>
       </div>
       <div class="query-scores">
-        <span>Faithfulness <b style="color:${fColor}">${s.scores.faithfulness}</b></span>
-        <span>Relevance <b style="color:${rColor}">${s.scores.relevance}</b></span>
-        <span>Context <b style="color:${pColor}">${s.scores.context_precision}</b></span>
+        <span>Faithfulness <b style="color:${getColor(s.scores.faithfulness)}">${s.scores.faithfulness}</b></span>
+        <span>Relevance <b style="color:${getColor(s.scores.relevance)}">${s.scores.relevance}</b></span>
+        <span>Context <b style="color:${getColor(s.scores.context_precision)}">${s.scores.context_precision}</b></span>
         <span>ROUGE <b style="color:#999">${s.scores.rouge_l}</b></span>
       </div>
       <div class="reasoning">
@@ -208,6 +209,29 @@ function renderCards(scores) {
     `;
     list.appendChild(card);
   });
+}
+
+function updateMetricCards(all) {
+  if (all.length === 0) return;
+  const avgF = all.reduce((s, x) => s + x.scores.faithfulness, 0) / all.length;
+  const avgR = all.reduce((s, x) => s + x.scores.relevance, 0) / all.length;
+  const avgP = all.reduce((s, x) => s + x.scores.context_precision, 0) / all.length;
+  const passed = all.filter(s => s.verdict === 'PASS').length;
+  const failed = all.length - passed;
+  const mFaith = document.getElementById('mFaith');
+  mFaith.textContent = avgF.toFixed(2);
+  mFaith.style.color = getColor(avgF);
+  document.getElementById('mFaithSub').textContent = 'across ' + all.length + ' queries';
+  const mRelev = document.getElementById('mRelev');
+  mRelev.textContent = avgR.toFixed(2);
+  mRelev.style.color = getColor(avgR);
+  document.getElementById('mRelevSub').textContent = 'across ' + all.length + ' queries';
+  const mPrec = document.getElementById('mPrec');
+  mPrec.textContent = avgP.toFixed(2);
+  mPrec.style.color = getColor(avgP);
+  document.getElementById('mPrecSub').textContent = 'across ' + all.length + ' queries';
+  document.getElementById('mPass').textContent = passed + '/' + all.length;
+  document.getElementById('mFailed').textContent = failed + ' flagged';
 }
 
 const labels = initialScores.slice(-20).map((_, i) => 'Q' + (i + 1));
@@ -237,19 +261,14 @@ const chart = new Chart(document.getElementById('trendChart'), {
 });
 
 renderCards(initialScores);
+updateMetricCards(initialScores);
 
-async function refreshScores() {
+async function refreshAll() {
   const res = await fetch('/scores');
   const all = await res.json();
   renderCards(all);
+  updateMetricCards(all);
   if (all.length > 0) {
-    const avg = (key) => (all.reduce((s, x) => s + x.scores[key], 0) / all.length).toFixed(2);
-    const passed = all.filter(s => s.verdict === 'PASS').length;
-    document.getElementById('mFaith').textContent = avg('faithfulness');
-    document.getElementById('mRelev').textContent = avg('relevance');
-    document.getElementById('mPrec').textContent = avg('context_precision');
-    document.getElementById('mPass').textContent = passed + '/' + all.length;
-    document.getElementById('mFailed').textContent = (all.length - passed) + ' flagged';
     const recent20 = all.slice(-20);
     chart.data.labels = recent20.map((_, i) => 'Q' + (i + 1));
     chart.data.datasets[0].data = recent20.map(s => s.scores.faithfulness);
@@ -274,18 +293,15 @@ async function runEval() {
       body: JSON.stringify({ question, answer, context })
     });
     const data = await res.json();
-    const fColor = data.scores.faithfulness >= 0.7 ? '#1D9E75' : data.scores.faithfulness >= 0.5 ? '#EF9F27' : '#E24B4A';
-    const rColor = data.scores.relevance >= 0.7 ? '#1D9E75' : data.scores.relevance >= 0.5 ? '#EF9F27' : '#E24B4A';
-    const pColor = data.scores.context_precision >= 0.7 ? '#1D9E75' : data.scores.context_precision >= 0.5 ? '#EF9F27' : '#E24B4A';
     document.getElementById('scoreRow').innerHTML = `
-      <span>Faithfulness <b style="color:${fColor}">${data.scores.faithfulness}</b></span>
-      <span>Relevance <b style="color:${rColor}">${data.scores.relevance}</b></span>
-      <span>Context <b style="color:${pColor}">${data.scores.context_precision}</b></span>
+      <span>Faithfulness <b style="color:${getColor(data.scores.faithfulness)}">${data.scores.faithfulness}</b></span>
+      <span>Relevance <b style="color:${getColor(data.scores.relevance)}">${data.scores.relevance}</b></span>
+      <span>Context <b style="color:${getColor(data.scores.context_precision)}">${data.scores.context_precision}</b></span>
       <span>ROUGE <b style="color:#999">${data.scores.rouge_l}</b></span>
     `;
     document.getElementById('verdictRow').innerHTML = `Verdict: <b style="color:${data.verdict === 'PASS' ? '#1D9E75' : '#E24B4A'}">${data.verdict}</b>`;
     document.getElementById('evalResult').style.display = 'block';
-    await refreshScores();
+    await refreshAll();
   } catch(e) {
     alert('Evaluation failed: ' + e.message);
   } finally {
