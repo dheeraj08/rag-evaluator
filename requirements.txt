@@ -5,4 +5,6 @@ langchain-ollama
 langchain-core
 rouge-score
 jinja2
-python-multipartlangchain-groq
+python-multipart
+langchain-groq
+langchain-text-splitters
