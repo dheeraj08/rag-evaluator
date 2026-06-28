@@ -287,12 +287,62 @@ def dashboard():
             `;
             document.getElementById('verdictRow').innerHTML = `Verdict: <b style="color:${{data.verdict === 'PASS' ? '#1D9E75' : '#E24B4A'}}">${{data.verdict}}</b>`;
             resultDiv.style.display = 'block';
+            document.getElementById('verdictRow').innerHTML = `Verdict: <b style="color:${{data.verdict === 'PASS' ? '#1D9E75' : '#E24B4A'}}">${{data.verdict}}</b>`;
+            resultDiv.style.display = 'block';
+            await refreshScores();
+            updateMetrics();
         }} catch(e) {{
             alert('Evaluation failed: ' + e.message);
         }} finally {{
             btn.disabled = false;
             btn.textContent = 'Run evaluation';
         }}
+        }}
+        
+        async function refreshScores() {{
+        const res = await fetch('/scores');
+        const latest = await res.json();
+        const list = document.getElementById('queriesList');
+        list.innerHTML = '';
+        const recent = latest.slice(-20).reverse();
+        recent.forEach((s) => {{
+            const card = document.createElement('div');
+            card.className = 'query-card';
+            card.onclick = () => card.classList.toggle('open');
+            const fColor = s.scores.faithfulness >= 0.7 ? '#1D9E75' : s.scores.faithfulness >= 0.5 ? '#EF9F27' : '#E24B4A';
+            const rColor = s.scores.relevance >= 0.7 ? '#1D9E75' : s.scores.relevance >= 0.5 ? '#EF9F27' : '#E24B4A';
+            const pColor = s.scores.context_precision >= 0.7 ? '#1D9E75' : s.scores.context_precision >= 0.5 ? '#EF9F27' : '#E24B4A';
+            card.innerHTML = `
+            <div class="query-header">
+                <div class="query-question">${{s.question}}</div>
+                <span class="badge badge-${{s.verdict.toLowerCase()}}">${{s.verdict}}</span>
+            </div>
+            <div class="query-scores">
+                <span>Faithfulness <b style="color:${{fColor}}">${{s.scores.faithfulness}}</b></span>
+                <span>Relevance <b style="color:${{rColor}}">${{s.scores.relevance}}</b></span>
+                <span>Context <b style="color:${{pColor}}">${{s.scores.context_precision}}</b></span>
+                <span>ROUGE <b style="color:#999">${{s.scores.rouge_l}}</b></span>
+            </div>
+            <div class="reasoning">
+                <p><b>Faithfulness:</b> ${{s.reasoning.faithfulness}}</p>
+                <p><b>Relevance:</b> ${{s.reasoning.relevance}}</p>
+                <p><b>Context precision:</b> ${{s.reasoning.context_precision}}</p>
+            </div>
+            `;
+            list.appendChild(card);
+        }});
+        }}
+
+        async function updateMetrics() {{
+        const res = await fetch('/scores');
+        const all = await res.json();
+        if (all.length === 0) return;
+        const avg = (key) => (all.reduce((s, x) => s + x.scores[key], 0) / all.length).toFixed(2);
+        const passed = all.filter(s => s.verdict === 'PASS').length;
+        document.querySelectorAll('.metric-card .value')[0].textContent = avg('faithfulness');
+        document.querySelectorAll('.metric-card .value')[1].textContent = avg('relevance');
+        document.querySelectorAll('.metric-card .value')[2].textContent = avg('context_precision');
+        document.querySelectorAll('.metric-card .value')[3].textContent = passed + '/' + all.length;
         }}
         </script>
         </body>
