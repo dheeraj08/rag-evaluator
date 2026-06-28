@@ -8,7 +8,7 @@ import os
 def get_llm():
     groq_key = os.getenv("GROQ_API_KEY")
     if groq_key:
-        return ChatGroq(model="llama3-8b-8192", api_key=groq_key)
+        return ChatGroq(model="llama-3.3-70b-versatile", api_key=groq_key)
     return OllamaLLM(model="llama3.2")
 
 def extract_score(text: str) -> float:
