@@ -3,7 +3,7 @@
 A live LLM observability system that automatically scores RAG outputs across 
 multiple quality dimensions and surfaces trends on a public mission control dashboard.
 
-**Live demo:** https://your-url.railway.app
+**Live demo:** https://rag-evaluator.onrender.com
 
 ## What it does
 
