@@ -94,7 +94,7 @@ def dashboard():
     .form-group label { font-size: 12px; color: #555; display: block; margin-bottom: 6px; }
     .form-group input, .form-group textarea { width: 100%; background: #111; border: 1px solid #222; border-radius: 8px; padding: 10px 12px; color: #ccc; font-size: 13px; font-family: inherit; outline: none; transition: border-color 0.2s; resize: vertical; }
     .form-group input:focus, .form-group textarea:focus { border-color: #333; }
-    .disclaimer { font-size: 11px; color: #444; margin-bottom: 12px; }
+    .disclaimer { font-size: 12px; color: #EF9F27; margin-bottom: 12px; padding: 10px 12px; border: 1px solid rgba(239,159,39,0.3); border-radius: 8px; background: rgba(239,159,39,0.05); line-height: 1.5; }
     .btn { background: #1D9E75; color: #fff; border: none; border-radius: 8px; padding: 10px 20px; font-size: 13px; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
     .btn:hover { opacity: 0.85; }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -154,7 +154,7 @@ def dashboard():
 
   <p class="section-title">Live evaluator — test any LLM output</p>
   <div class="evaluator">
-    <p class="disclaimer">Public demo. Do not submit confidential or sensitive information.</p>
+    <p class="disclaimer">⚠️ Public demo — do not submit confidential, sensitive, or proprietary information. All evaluations are visible to everyone. This instance supports up to 500 stored evaluations.</p>
     <div class="form-group"><label>Question</label><input type="text" id="eq" placeholder="What is RAG?" /></div>
     <div class="form-group"><label>Generated answer</label><textarea id="ea" rows="3" placeholder="The model's answer..."></textarea></div>
     <div class="form-group"><label>Retrieved context</label><textarea id="ec" rows="3" placeholder="The chunks retrieved from your vector store..."></textarea></div>
