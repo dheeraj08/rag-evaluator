@@ -5,4 +5,4 @@ langchain-ollama
 langchain-core
 rouge-score
 jinja2
-python-multipart
+python-multipartlangchain-groq

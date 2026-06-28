@@ -1,9 +1,15 @@
 from langchain_ollama import OllamaLLM
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 import re
+import os
 
-LLM_MODEL = "llama3.2"
+def get_llm():
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        return ChatGroq(model="llama3-8b-8192", api_key=groq_key)
+    return OllamaLLM(model="llama3.2")
 
 def extract_score(text: str) -> float:
     match = re.search(r'SCORE:\s*([0-9.]+)', text)
@@ -26,7 +32,7 @@ def extract_reasoning(text: str) -> str:
     return text[:200].strip()
 
 def score_faithfulness(question: str, answer: str, context: str) -> dict:
-    llm = OllamaLLM(model=LLM_MODEL)
+    llm = get_llm()
     prompt = ChatPromptTemplate.from_template("""Rate how faithful this answer is to the context. Faithful means every claim in the answer is supported by the context.
 
 Context: {context}
